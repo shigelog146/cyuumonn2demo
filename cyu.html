@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <title>厨房モニター</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="style_cyu.css?v=1">
+</head>
+
+<body>
+
+  <h1>厨房オーダー</h1>
+
+  <div style="text-align:center; margin-bottom:10px;">
+    <button onclick="toggleHistory()" id="historyBtn">
+      📜 会計済みを表示
+    </button>
+  </div>
+
+  <!-- 音有効化 -->
+  <div id="soundUnlock" style="text-align:center;margin-bottom:12px;">
+    <button id="unlockSoundBtn" type="button">🔊 音を有効にする</button>
+  </div>
+
+  <!-- 注文表示 -->
+  <div id="orders"></div>
+
+  <script>
+
+    // ===============================
+    // Supabase設定
+    // ===============================
+    const SUPABASE_URL = "https://flefnottwzsbihgrqrqk.supabase.co";
+    const TABLE = "orders";
+    const API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsZWZub3R0d3pzYmloZ3JxcnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTgxNzMsImV4cCI6MjA4OTc3NDE3M30.gvqf7_VRMZiPcGmQsWk_DCEJ0JmD_wcCCVzl-L9URKc";
+
+    // ===============================
+    // セッション
+    // ===============================
+    let currentSessionId = null;
+    let showHistory = false; // ← 追加（false=現在注文 / true=会計済み）
+    // ===============================
+    // 状態管理
+    // ===============================
+    let displayedOrderIds = new Set();
+    let soundUnlocked = false;
+    let bellTimer = null;
+
+    // ===============================
+    // AudioContext
+    // ===============================
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioContext = new AudioContextClass();
+
+    // ===============================
+    // 音有効化
+    // ===============================
+    function unlockSound() {
+      audioContext.resume();
+      playChirin();
+      soundUnlocked = true;
+      document.getElementById('soundUnlock').style.display = 'none';
+    }
+
+    // ===============================
+    // 表示切替
+    // ===============================
+    function toggleHistory() {
+
+      showHistory = !showHistory;
+
+      const btn = document.getElementById("historyBtn");
+
+      if (showHistory) {
+        btn.textContent = "📦 現在の注文に戻る";
+      } else {
+        btn.textContent = "📜 会計済みを表示";
+      }
+
+      // 状態リセット（重要：過去注文で音が鳴らないように）
+      displayedOrderIds.clear();
+
+      fetchOrders();
+    }
+
+    // ===============================
+    // 鐘の音
+    // ===============================
+    function playChirin() {
+
+      try {
+        const now = audioContext.currentTime;
+        const freqs = [2400, 2100, 2800, 5500];
+
+        freqs.forEach((f, i) => {
+
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, now);
+
+          const lfo = audioContext.createOscillator();
+          const lfoGain = audioContext.createGain();
+
+          lfo.frequency.setValueAtTime(18, now);
+          lfoGain.gain.setValueAtTime(20, now);
+
+          lfo.connect(lfoGain);
+          lfoGain.connect(osc.frequency);
+
+          gain.gain.setValueAtTime(0.7 - i * 0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+          osc.connect(gain).connect(audioContext.destination);
+
+          osc.start(now);
+          osc.stop(now + 1.5);
+          lfo.start(now);
+          lfo.stop(now + 1.5);
+        });
+
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
+    // ===============================
+    // 複数回鳴らす
+    // ===============================
+    function playChirinMulti(times = 5, interval = 200) {
+
+      if (!soundUnlocked || bellTimer) return;
+
+      let count = 0;
+
+      bellTimer = setInterval(() => {
+        playChirin();
+        count++;
+
+        if (count >= times) {
+          clearInterval(bellTimer);
+          bellTimer = null;
+        }
+      }, interval);
+    }
+
+    // ===============================
+    // 注文取得
+    // ===============================
+    async function fetchOrders() {
+
+      try {
+
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/orders?is_hidden=eq.${showHistory}&select=*,order_items(*)&order=created_at.desc`,
+          {
+            headers: {
+              "apikey": API_KEY,
+              "Authorization": `Bearer ${API_KEY}`
+            }
+          }
+        );
+
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("データ異常", data);
+          return;
+        }
+
+        let hasNew = false;
+
+        for (const o of data) {
+          if (!displayedOrderIds.has(o.id)) hasNew = true;
+        }
+
+        if (!showHistory && displayedOrderIds.size > 0 && hasNew) {
+          playChirinMulti();
+        }
+
+        displayedOrderIds = new Set(data.map(o => o.id));
+
+        renderOrders(data);
+
+      } catch (e) {
+        console.error("fetch error", e);
+      }
+    }
+
+    // ===============================
+    // 描画
+    // ===============================
+    function renderOrders(orders) {
+
+      const container = document.getElementById("orders");
+      container.innerHTML = "";
+
+      // ===============================
+      // テーブルごとにまとめる
+      // ===============================
+      const tableMap = {};
+
+      orders.forEach(o => {
+
+        // ▼キーを変更（ここが最重要）
+        const key = `${o.session_group_id}`;
+
+        if (!tableMap[key]) {
+          tableMap[key] = [];
+        }
+
+        tableMap[key].push(o);
+      });
+
+      // ===============================
+      // テーブルごとに表示
+      // ===============================
+      for (const key in tableMap) {
+
+        // 一番古い注文を取得（これが開始時間）
+        const oldest = tableMap[key].reduce((a, b) => {
+          return new Date(a.created_at) < new Date(b.created_at) ? a : b;
+        });
+        const first = tableMap[key][0];
+        const seatType = first.seat_type || "table";
+        const table = first.table_number;
+
+        let label;
+
+        if (seatType === "takeout") {
+          label = "テイクアウト";
+        } else if (seatType === "counter") {
+          label = "カウンター";
+        } else {
+          label = "テーブル";
+        }
+        const startTime = new Date(oldest.created_at);
+
+        // 表示フォーマット
+        const formattedStart = startTime.toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+
+        // 経過時間（分）
+        const now = new Date();
+        const elapsedMin = Math.floor((now - startTime) / 60000);
+        const tableDiv = document.createElement("div");
+        tableDiv.className = "table-group";
+
+        let total = 0;
+        let content = "";
+
+        // ===============================
+        // 並び替え（←ここに移動）
+        // ===============================
+        tableMap[key].sort((a, b) => {
+
+          // 取消は一番下
+          if (a.is_cancelled !== b.is_cancelled) {
+            return a.is_cancelled ? 1 : -1;
+          }
+
+          // 未調理を上
+          if (a.is_done !== b.is_done) {
+            return a.is_done ? 1 : -1;
+          }
+
+          // 新しい順
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        // ===============================
+        // 表示処理
+        // ===============================
+        tableMap[key].forEach(o => {
+
+          content += `<div class="order-block ${o.is_cancelled ? 'cancelled' : (o.is_done ? 'done' : '')}">`;
+
+          // 状態表示
+          if (o.is_cancelled) {
+            content += `<div style="color:red;">【取消済】</div>`;
+          } else if (o.is_done) {
+            content += `<div style="color:lime;">【調理済】</div>`;
+          }
+
+          // メニュー
+          if (o.order_items) {
+            o.order_items.forEach(i => {
+              const price = i.price * i.quantity;
+
+              if (!o.is_cancelled) {
+                total += price;
+              }
+
+              content += `
+        <div>
+          ${i.item_name} ×${i.quantity}（¥${price}）
+        </div>
+      `;
+            });
+          }
+
+          // メモ
+          if (o.message) {
+            content += `<div>📝 ${o.message}</div>`;
+          }
+
+          // ボタン
+          content += `
+<div style="margin-top:5px;">
+
+  ${!showHistory ? `
+  <button class="doneBtn" onclick="toggleDone(${o.id}, ${o.is_done})">
+    ${o.is_done ? "未完了に戻す" : "調理完了"}
+  </button>
+
+  <button class="cancelBtn" onclick="toggleCancel(${o.id}, ${o.is_cancelled})">
+    ${o.is_cancelled ? "取消解除" : "注文取消"}
+  </button>
+  ` : ""}
+
+  ${showHistory ? `
+  <button onclick="restoreOrder(${o.id})"
+    style="background:#ff9800; color:white;">
+    🔄 復元
+  </button>
+  ` : ""}
+
+</div>
+  `;
+
+          content += `</div>`;
+        });
+
+        tableDiv.innerHTML = `
+<h2>
+  ${seatType === "takeout"
+            ? `${label}`
+            : `${label} ${table}`
+          }
+  <span style="font-size:0.7em; color:#ccc;">
+    🕒 ${formattedStart}（${elapsedMin}分経過）
+  </span>
+</h2>
+      ${content}
+      <div style="margin-top:10px; font-weight:bold;">
+        合計：¥${total}
+      </div>
+
+${!showHistory ? `
+<button onclick="checkoutTable('${key}', '${seatType}', ${table})"
+  style="margin-top:10px; padding:10px;">
+  💰 ${seatType === "takeout" ? "テイクアウト会計" : `この${label}を会計`}
+</button>
+` : ""}
+      `;
+        container.appendChild(tableDiv);
+      }
+    }
+
+    // ===============================
+    // テーブル単位会計
+    // ===============================
+    async function checkoutTable(groupId, seatType, tableNumber) {
+
+      try {
+
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/orders?session_group_id=eq.${groupId}&is_hidden=eq.false&select=*,order_items(*)`,
+          {
+            headers: {
+              "apikey": API_KEY,
+              "Authorization": `Bearer ${API_KEY}`
+            }
+          }
+        );
+
+        const orders = await res.json();
+
+        if (!orders.length) {
+          alert("注文がありません");
+          return;
+        }
+
+        let label;
+
+        if (seatType === "takeout") {
+          label = "テイクアウト";
+        } else if (seatType === "counter") {
+          label = "カウンター";
+        } else {
+          label = "テーブル";
+        }
+
+        let text = `【${label} ${tableNumber} 会計】\n\n`;
+        let total = 0;
+
+        orders.forEach(o => {
+
+          // ===== メニュー処理 =====
+          if (o.order_items) {
+            o.order_items.forEach(i => {
+
+              const price = i.price * i.quantity;
+
+              if (o.is_cancelled) {
+                // 取消は表示だけ
+                text += `（取消）${i.item_name} ×${i.quantity}\n`;
+              } else {
+                // ★ここでのみ加算
+                total += price;
+                text += `${i.item_name} ×${i.quantity} = ¥${price}\n`;
+              }
+
+            });
+          }
+
+          // メモ
+          if (o.message) {
+            text += `メモ：${o.message}\n`;
+          }
+
+          text += "\n";
+        });
+
+        text += "------------------\n";
+        text += `合計：¥${total}\n`;
+
+        if (!confirm(text + "\n会計しますか？")) return;
+
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/orders?session_group_id=eq.${groupId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": API_KEY,
+              "Authorization": `Bearer ${API_KEY}`
+            },
+            body: JSON.stringify({
+              is_hidden: true
+            })
+          }
+        );
+
+        alert("会計完了");
+
+        fetchOrders();
+
+      } catch (e) {
+        console.error(e);
+        alert("エラー発生");
+      }
+    }
+
+    // ===============================
+    // 合計計算
+    // ===============================
+    function calculateTotal(orders) {
+
+      let total = 0;
+
+      orders.forEach(o => {
+
+        if (o.order_items) {
+          o.order_items.forEach(i => {
+
+            const price = i.price * i.quantity;
+
+            // ★ここで制御
+            if (!o.is_cancelled) {
+              total += price;
+              text += `${i.item_name} ×${i.quantity} = ¥${price}\n`;
+            } else {
+              text += `（取消）${i.item_name} ×${i.quantity}\n`;
+            }
+          });
+        }
+
+        if (o.message) {
+          text += `メモ：${o.message}\n`;
+        }
+
+        text += "\n";
+      });
+
+      return total;
+    }
+
+    // ===============================
+    // 明細作成
+    // ===============================
+    function createReceiptText(orders) {
+
+      let text = "【会計明細】\n\n";
+
+      orders.forEach(o => {
+
+
+        text += `■テーブル ${o.table_number}\n`;
+
+        if (o.order_items) {
+          o.order_items.forEach(i => {
+            text += `${i.item_name} ×${i.quantity} = ¥${i.price * i.quantity}\n`;
+          });
+        }
+
+        if (o.message) {
+          text += `メモ：${o.message}\n`;
+        }
+
+        text += "\n";
+      });
+
+      const total = calculateTotal(orders);
+
+      text += "------------------\n";
+      text += `合計：¥${total}\n`;
+
+      return text;
+    }
+
+    // ===============================
+    // 取消
+    // ===============================
+    async function toggleCancel(id, state) {
+
+      await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": API_KEY,
+          "Authorization": `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          is_cancelled: !state
+        })
+      });
+
+      fetchOrders();
+    }
+
+    // ===============================
+    // 完了
+    // ===============================
+    async function toggleDone(id, state) {
+
+      await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": API_KEY,
+          "Authorization": `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          is_done: !state
+        })
+      });
+
+      fetchOrders();
+    }
+
+    // ===============================
+    // 復元（会計済み → 未会計）
+    // ===============================
+    async function restoreOrder(id) {
+
+      if (!confirm("この注文を復元しますか？（会計前に戻ります）")) return;
+
+      await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": API_KEY,
+          "Authorization": `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+          is_hidden: false // ← ここが本質
+        })
+      });
+
+      // 🔴重要：復元は「新規注文ではない」ので音を鳴らさない
+      displayedOrderIds.add(id);
+
+      fetchOrders();
+    }
+
+    // ===============================
+    // 初期化（最重要）
+    // ===============================
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // 音有効化
+      document.getElementById('unlockSoundBtn')
+        .addEventListener('click', unlockSound);
+
+      // 初回取得
+      fetchOrders();
+
+      // 定期更新
+      setInterval(fetchOrders, 3000);
+    });
+
+  </script>
+
+</body>
+
+</html>

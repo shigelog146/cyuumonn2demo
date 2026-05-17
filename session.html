@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>セッション発行</title>
+
+    <!-- QR生成ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #111;
+            color: #fff;
+            margin: 0;
+            padding: 16px;
+        }
+
+        /* タイトル */
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* カード */
+        .card {
+            background: #222;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* 席タイプ */
+        .seat-type {
+            display: flex;
+            gap: 10px;
+        }
+
+        .seat-type label {
+            flex: 1;
+            text-align: center;
+            padding: 16px;
+            background: #333;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        input[type="radio"] {
+            display: none;
+        }
+
+        input[type="radio"]:checked+span {
+            background: #ff4d4d;
+            padding: 16px;
+            border-radius: 10px;
+            display: block;
+        }
+
+        /* セレクト */
+        #table {
+            width: 100%;
+            padding: 16px;
+            font-size: 20px;
+            margin-top: 15px;
+            border-radius: 10px;
+        }
+
+        /* ボタン */
+        button {
+            width: 100%;
+            padding: 18px;
+            font-size: 22px;
+            border: none;
+            border-radius: 12px;
+            background: #ff4d4d;
+            color: #fff;
+            margin-top: 15px;
+        }
+
+        /* URL */
+        #url {
+            margin-top: 10px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        /* QR */
+        #qr {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>セッション発行（開発用）</h2>
+
+    <div class="card">
+
+        <div class="seat-type">
+            <label>
+                <input type="radio" name="seatType" value="table" checked>
+                <span>テーブル</span>
+            </label>
+
+            <label>
+                <input type="radio" name="seatType" value="counter">
+                <span>カウンター</span>
+            </label>
+
+            <label>
+                <input type="radio" name="seatType" value="takeout">
+                <span>テイクアウト</span>
+            </label>
+        </div>
+
+        <select id="table">
+            <option value="1">番号 1</option>
+            <option value="2">番号 2</option>
+            <option value="3">番号 3</option>
+            <option value="4">番号 4</option>
+            <option value="5">番号 5</option>
+            <option value="6">番号 6</option>
+            <option value="7">番号 7</option>
+            <option value="8">番号 8</option>
+            <option value="9">番号 9</option>
+            <option value="10">番号 10</option>
+        </select>
+
+        <button onclick="createSession()">QR発行</button>
+
+    </div>
+
+    <div class="card">
+        <p id="url"></p>
+        <div id="qr"></div>
+    </div>
+
+    <script>
+
+        // ===============================
+        // Supabase設定（あなたの値）
+        // ===============================
+        const SUPABASE_URL = "https://flefnottwzsbihgrqrqk.supabase.co";
+        const SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsZWZub3R0d3pzYmloZ3JxcnFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTgxNzMsImV4cCI6MjA4OTc3NDE3M30.gvqf7_VRMZiPcGmQsWk_DCEJ0JmD_wcCCVzl-L9URKc";
+
+        // ===============================
+        // モード設定
+        // ===============================
+
+        // true  → 外部公開デモ
+        // false → 店内LAN本番
+        const DEMO_MODE = true;
+
+        // デモ公開URL
+        const DEMO_BASE_URL =
+            "https://あなたのURL.pages.dev/index.html";
+
+        // ===============================
+        // セッション発行
+        // ===============================
+        async function createSession() {
+
+            // 席タイプ取得
+            const seatType = document.querySelector('input[name="seatType"]:checked').value;
+
+            // テーブル番号
+            let tableNumber = document.getElementById("table").value;
+
+            // テイクアウトなら番号不要
+            if (seatType === "takeout") {
+                tableNumber = 0;
+            }
+
+            try {
+
+                // まずテーブル構造を確認（デバッグ用）
+                console.log("Checking table structure...");
+                const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/sessions?limit=1`, {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": SUPABASE_API_KEY,
+                        "Authorization": `Bearer ${SUPABASE_API_KEY}`
+                    }
+                });
+
+                if (checkRes.ok) {
+                    const sampleData = await checkRes.json();
+                    console.log("Table structure check:", sampleData);
+                }
+
+                // ① セッション作成
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/sessions`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "apikey": SUPABASE_API_KEY,
+                        "Authorization": `Bearer ${SUPABASE_API_KEY}`,
+                        "Prefer": "return=representation"
+                    },
+                    body: JSON.stringify({
+                        table_number: tableNumber,
+                        seat_type: seatType
+                    })
+                });
+
+                if (!res.ok) {
+                    const error = await res.json();
+                    alert("セッション作成失敗: " + (error.message || res.statusText));
+                    console.error(error);
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (!Array.isArray(data) || !data[0]) {
+                    alert("セッション作成失敗: レスポンス形式エラー");
+                    console.error(data);
+                    return;
+                }
+
+                const sessionId = data[0].id;
+
+                // ===============================
+                // ② URL生成（修正）
+                // ===============================
+                // ===============================
+                // QR用URL生成
+                // ===============================
+
+                let baseUrl;
+
+                // デモモード
+                if (DEMO_MODE) {
+
+                    // 外部公開URL
+                    baseUrl = DEMO_BASE_URL;
+
+                } else {
+
+                    // 店内LAN URL
+                    baseUrl =
+                        location.origin +
+                        location.pathname.replace(/[^/]+$/, "") +
+                        "index.html";
+                }
+
+                // ===============================
+                // デモ時は mode=demo を付与
+                // ===============================
+
+                let orderUrl =
+                    `${baseUrl}?table=${tableNumber}&session=${sessionId}&seat_type=${seatType}`;
+
+                if (DEMO_MODE) {
+                    orderUrl += "&mode=demo";
+                }
+
+                const label = seatType === "counter"
+                    ? "カウンター"
+                    : seatType === "takeout"
+                        ? "テイクアウト"
+                        : "テーブル";
+                document.getElementById("url").textContent =
+                    `${label}${tableNumber} → ${orderUrl}`;
+
+                // ===============================
+                // ③ QR生成（そのままでOK）
+                // ===============================
+                document.getElementById("qr").innerHTML = "";
+
+                QRCode.toCanvas(orderUrl, function (err, canvas) {
+                    if (err) {
+                        console.error(err);
+                        return;
+                    }
+                    document.getElementById("qr").appendChild(canvas);
+                });
+
+
+            } catch (e) {
+                alert("通信エラー");
+                console.error(e);
+            }
+        }
+
+        // ===============================
+        // 席タイプ変更時のUI制御（追加）
+        // ===============================
+        document.querySelectorAll('input[name="seatType"]').forEach(radio => {
+            radio.addEventListener("change", () => {
+                const type = document.querySelector('input[name="seatType"]:checked').value;
+                const tableSelect = document.getElementById("table");
+
+                if (type === "takeout") {
+                    tableSelect.style.display = "none";
+                } else {
+                    tableSelect.style.display = "block";
+                }
+            });
+        });
+
+    </script>
+
+</body>
+
+</html>

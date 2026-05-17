@@ -1,0 +1,123 @@
+/* ===============================
+   全体レイアウト
+=============================== */
+body {
+  font-family: sans-serif;
+  background: #303030;
+  color: #fff;
+  margin: 0;
+  padding: 10px;
+}
+
+/* タイトル */
+h1 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* ===============================
+   注文一覧
+=============================== */
+#orders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+/* ===============================
+   テーブルグループ
+=============================== */
+.table-group {
+  background: #181818;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+/* ===============================
+   注文ブロック
+=============================== */
+.order-block {
+  background: #222;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+
+  border-left: 6px solid #ff4d4d;
+}
+
+.order-block:not(.done):not(.cancelled) {
+  border-left: 6px solid #ff0000;
+}
+
+/* ===============================
+   状態表示（ここが本体）
+=============================== */
+
+/* 調理済 */
+.done {
+  opacity: 0.4;
+  background-color: #002200;
+}
+
+/* 取消 */
+.cancelled {
+  opacity: 0.3;
+  background-color: #330000;
+  text-decoration: line-through;
+}
+
+/* ===============================
+   テキスト
+=============================== */
+.table {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.item {
+  margin: 4px 0;
+}
+
+/* ===============================
+   ボタン（超重要）
+=============================== */
+button {
+  font-size: 22px;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  margin-right: 5px;
+  margin-top: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #1b1d27;
+}
+
+/* 調理ボタン */
+.doneBtn {
+  background-color: #1bda47;
+}
+
+/* キャンセルボタン */
+.cancelBtn {
+  background-color: #dc1e31;
+}
+
+/* ===============================
+   スマホ対応
+=============================== */
+@media (max-width: 768px) {
+
+  #orders {
+    grid-template-columns: 1fr;
+  }
+
+  .table {
+    font-size: 26px;
+  }
+
+  button {
+    font-size: 18px;
+    padding: 14px;
+  }
+}

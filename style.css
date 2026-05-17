@@ -1,0 +1,339 @@
+/* ===============================
+   全体レイアウト設定
+=============================== */
+
+/* ページ全体の基本スタイル */
+body {
+  font-family: 'Yu Gothic', sans-serif; /* フォント指定 */
+  background: #fff0f5;                  /* 背景色（薄いピンク） */
+  color: #4b2e2e;                       /* 文字色 */
+  padding: 16px;                        /* 外側余白 */
+  font-size: 18px;                      /* 基本文字サイズ */
+}
+
+/* タイトル */
+h1 {
+  text-align: center;   /* 中央寄せ */
+  font-size: 28px;      /* サイズ */
+  color: #d86c9b;       /* ピンク系 */
+  margin-bottom: 20px;  /* 下余白 */
+}
+
+/* 全要素の幅計算を統一（padding込みで幅計算） */
+* {
+  box-sizing: border-box;
+}
+
+/* ===============================
+   フォームエリア
+=============================== */
+
+/* フォーム全体 */
+form {
+  background: #ffffff;
+  max-width: 600px;                     /* 最大幅 */
+  margin: 0 auto 40px;                  /* 中央寄せ＋下余白 */
+  padding: 20px;
+  border-radius: 16px;                  /* 角丸 */
+  box-shadow: 0 4px 20px rgba(216, 108, 155, 0.2); /* 影 */
+}
+
+/* ラベル */
+label {
+  display: block;
+  margin-top: 16px;
+  font-weight: bold;
+  color: #d86c9b;
+  font-size: 18px;
+}
+
+/* セレクト・テキストエリア共通 */
+select,
+textarea {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin-top: 8px;
+  font-size: 18px;
+  min-height: 48px;
+}
+
+/* テキストエリア個別 */
+textarea {
+  height: 100px;
+}
+
+/* ===============================
+   ボタン
+=============================== */
+
+button {
+  margin-top: 24px;
+  padding: 18px;
+  background: #d86c9b;
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* 無効ボタン */
+button:disabled {
+  background: #f0b6d1;
+  cursor: not-allowed;
+}
+
+/* ===============================
+   メニュー表示
+=============================== */
+
+/* メニュー全体 */
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* 要素間の余白 */
+}
+
+/* 各メニューカード */
+.menu-item {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+/* メニュー画像 */
+.menu-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* セレクトエリア */
+.menu-select {
+  position: relative;
+  background: rgba(255,255,255,.9);
+  padding: 14px;
+}
+
+/* セレクト内ラベル */
+.menu-select label {
+  font-size: 18px;
+}
+
+/* セレクト */
+.menu-select select {
+  font-size: 18px;
+}
+
+/* ===============================
+   履歴エリア
+=============================== */
+
+/* 履歴全体 */
+#history {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(216, 108, 155, 0.2);
+  padding: 20px;
+}
+
+/* ===============================
+   履歴カードデザイン（追加）
+=============================== */
+
+/* 履歴カード */
+.history-item {
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, #fff, #fff7fb);
+  box-shadow: 0 4px 12px rgba(216,108,155,0.15);
+  transition: transform 0.2s ease;
+}
+
+/* ホバー時の浮き上がり */
+.history-item:hover {
+  transform: translateY(-3px);
+}
+
+/* 時間表示（1つ目の定義） */
+.history-time {
+  font-size: 25px;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+/* 履歴内容 */
+.history-content {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* タグ表示 */
+.tag {
+  display: inline-block;
+  background: #ffd6e7;
+  color: #a64d79;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  margin: 3px;
+}
+
+/* 件数強調 */
+.count {
+  font-weight: bold;
+  color: #d86c9b;
+  margin-left: 4px;
+}
+
+/* メッセージ欄 */
+.history-message {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #666;
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* 履歴タイトル */
+#history h2 {
+  text-align: center;
+  color: #d86c9b;
+  font-size: 22px;
+}
+
+/* 履歴カード（2回目の定義：上書きされる） */
+.history-item {
+  border-bottom: 1px solid #eee;
+  padding: 14px 0;
+  font-size: 16px;
+}
+
+/* 時間表示（2回目の定義：上書きされる） */
+.history-time {
+  color: #888;
+  font-size: 14px;
+}
+
+/* ===============================
+   スマホ最適化
+=============================== */
+
+@media (max-width: 768px) {
+
+  body {
+    padding: 10px;
+    font-size: 16px;
+  }
+
+  h1 {
+    font-size: 22px;
+    margin-bottom: 10px;
+  }
+
+  /* フォームを全幅に */
+  form {
+    max-width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  /* メニュー間隔 */
+  .menu-container {
+    gap: 14px;
+  }
+
+  .menu-item {
+    border-radius: 12px;
+  }
+
+  /* 画像サイズ制御 */
+  .menu-item img {
+    max-height: 180px;
+    object-fit: cover;
+  }
+
+  /* セレクト操作性向上 */
+  select {
+    font-size: 18px;
+    padding: 16px;
+  }
+
+  textarea {
+    font-size: 16px;
+  }
+
+  /* ボタン強調 */
+  button {
+    font-size: 22px;
+    padding: 18px;
+  }
+
+  /* 履歴 */
+  #history {
+    max-width: 100%;
+    padding: 14px;
+  }
+
+  .history-item {
+    padding: 12px;
+  }
+
+  .history-time {
+    font-size: 14px;
+  }
+
+  /* タグ拡大 */
+  .tag {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
+}
+
+/* ===============================
+   スマホ固定ボタン
+=============================== */
+
+@media (max-width: 768px) {
+
+  .submit-row {
+    position: sticky;
+    bottom: 0;
+    background: #fff0f5;
+    padding: 10px;
+  }
+
+  #submitBtn {
+    margin-top: 0;
+  }
+}
+
+/* ===============================
+   カテゴリタブ
+=============================== */
+
+#categoryTabs button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 10px;
+  background: #ffd6e7;
+  color: #a64d79;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#categoryTabs button.active {
+  background: #d86c9b;
+  color: #fff;
+}
