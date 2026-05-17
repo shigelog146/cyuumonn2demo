@@ -9,6 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: sans-serif;
             background: #111;
@@ -20,76 +24,147 @@
         /* タイトル */
         h2 {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            font-size: 1.8rem;
+            color: #ff7b7b;
         }
 
         /* カード */
         .card {
             background: #222;
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 20px;
+            padding: 18px;
             margin-bottom: 20px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
         }
 
         /* 席タイプ */
         .seat-type {
             display: flex;
             gap: 10px;
+            margin-bottom: 15px;
         }
 
+        /* ラベル */
         .seat-type label {
             flex: 1;
-            text-align: center;
-            padding: 16px;
-            background: #333;
-            border-radius: 10px;
             cursor: pointer;
-            font-size: 18px;
         }
 
+        /* ラジオ非表示 */
         input[type="radio"] {
             display: none;
         }
 
+        /* ボタン表示 */
+        .seat-type span {
+            display: block;
+            text-align: center;
+            padding: 18px 10px;
+            background: #333;
+            border-radius: 14px;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        /* 選択中 */
         input[type="radio"]:checked+span {
             background: #ff4d4d;
-            padding: 16px;
-            border-radius: 10px;
-            display: block;
+            color: white;
+            transform: scale(1.03);
         }
 
         /* セレクト */
         #table {
             width: 100%;
-            padding: 16px;
-            font-size: 20px;
-            margin-top: 15px;
-            border-radius: 10px;
+            padding: 18px;
+            font-size: 1.2rem;
+            margin-top: 12px;
+            border-radius: 14px;
+            border: none;
         }
 
         /* ボタン */
         button {
             width: 100%;
-            padding: 18px;
-            font-size: 22px;
+            padding: 20px;
+            font-size: 1.3rem;
+            font-weight: bold;
             border: none;
-            border-radius: 12px;
+            border-radius: 16px;
             background: #ff4d4d;
             color: #fff;
-            margin-top: 15px;
+            margin-top: 18px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        /* 押した時 */
+        button:active {
+            transform: scale(0.98);
         }
 
         /* URL */
         #url {
-            margin-top: 10px;
-            font-size: 14px;
+            margin-top: 15px;
+            font-size: 0.95rem;
+            line-height: 1.6;
             word-break: break-all;
+            background: #333;
+            padding: 12px;
+            border-radius: 12px;
         }
 
         /* QR */
         #qr {
-            margin-top: 20px;
+            margin-top: 25px;
             text-align: center;
+        }
+
+        /* QRサイズ */
+        #qr canvas {
+            width: 260px !important;
+            height: 260px !important;
+            max-width: 100%;
+            background: white;
+            padding: 12px;
+            border-radius: 16px;
+        }
+
+        /* スマホ最適化 */
+        @media (max-width: 480px) {
+
+            body {
+                padding: 12px;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            /* 縦並び */
+            .seat-type {
+                flex-direction: column;
+            }
+
+            .seat-type span {
+                font-size: 1.1rem;
+                padding: 18px;
+            }
+
+            #table {
+                font-size: 1.1rem;
+            }
+
+            button {
+                font-size: 1.2rem;
+                padding: 18px;
+            }
+
+            #qr canvas {
+                width: 220px !important;
+                height: 220px !important;
+            }
         }
     </style>
 </head>
